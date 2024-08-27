@@ -45,7 +45,7 @@ Our well-trained model is stored in [Google Drive](https://drive.google.com/file
 ## Results
 
 <img src="https://github.com/Garyson1204/HGINet/blob/main/assets/comparison.png">
-<img src="https://github.com/Garyson1204/HGINet/blob/main/assets/results.png">
+<img src="https://github.com/Garyson1204/HGINet/blob/main/assets/result.png">
 
 ### Prediction maps
 
