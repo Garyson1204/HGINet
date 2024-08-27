@@ -44,7 +44,9 @@ Our well-trained model is stored in [Google Drive](https://drive.google.com/file
 
 ## Results
 
-### Prediction Maps
+<img src="https://github.com/Garyson1204/HGINet/blob/main/assets/comparison.png">
+
+### Prediction maps
 
 The prediction results of our HGINet are stored on [Google Drive](https://drive.google.com/file/d/1SZclMGfEgjm8_EYlhd6DpInJxChwURUm/view). Please check.
 
