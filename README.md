@@ -24,7 +24,7 @@ pip install mmsegmentation==0.30.0 timm h5py einops fairscale imageio fvcore pys
 ```shell
 python -m torch.distributed.launch --nproc_per_node=<#GPU> --master_port=<port> train.py --path "<COD dataset path>" --pretrain "<pretrain model path>"
 ```
-Pretrain model weight is stored in [Google Drive](https://drive.google.com/file/d/1vdhUZ713peeo5hqXcdHPUdoMlhmDveu6/view?usp=drive_link). After downloading, please change the file path in the corresponding code.
+Pretrain model weight is stored in [Google Drive](https://drive.google.com/file/d/1vdhUZ713peeo5hqXcdHPUdoMlhmDveu6/view?usp=drive_link). After downloading, please change the file path in the corresponding code or the training command.
 
 ## Testing & Evaluation
 
