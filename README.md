@@ -1,4 +1,4 @@
-# HGINet
+# Hierarchical Graph Interaction Transformer with Dynamic Token Clustering for Camouflaged Object Detection
 
 **Authors:** Siyuan Yao, Hao Sun, Tian-Zhu Xiang, Xiao Wang and Xiaochun Cao
 
