@@ -32,7 +32,7 @@ pip install mmsegmentation==0.30.0 timm h5py einops fairscale imageio fvcore pys
 ```shell
 python -m torch.distributed.launch --nproc_per_node=<#GPU> --master_port=<port> train.py --path "<COD dataset path>" --pretrain "<pretrain model path>"
 ```
-Pretrain model weight is stored in [Google Drive](https://drive.google.com/file/d/1vdhUZ713peeo5hqXcdHPUdoMlhmDveu6/view?usp=drive_link). After downloading, please change the file path in the corresponding code or the training command.
+Pretrain model weight is stored in [Google Drive](https://drive.google.com/file/d/1vdhUZ713peeo5hqXcdHPUdoMlhmDveu6/view). After downloading, please change the file path in the corresponding code or the training command.
 
 ## Testing & Evaluation
 
@@ -41,6 +41,16 @@ python test.py
 python eval.py
 ```
 Our well-trained model is stored in [Google Drive](https://drive.google.com/file/d/1bApr9EhHIdAzagLD_95aKBxwqv7reumX/view). After downloading, please change the file path in the corresponding code.
+
+## Results
+
+### Prediction Maps
+
+The prediction results of our HGINet are stored on [Google Drive](https://drive.google.com/file/d/1SZclMGfEgjm8_EYlhd6DpInJxChwURUm/view). Please check.
+
+## Citation
+
+To be added.
 
 ## Acknowledgement
 
