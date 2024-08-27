@@ -22,7 +22,7 @@ for _data_name in ['CAMO', 'COD10K', 'NC4K']:
         pred = cv2.imread(pred_path, cv2.IMREAD_GRAYSCALE)
         # mask_height, mask_width = mask.shape
 
-        # # 调整pred图像的大小为和mask图像相同
+        # change pred size
         # pred = cv2.resize(pred, (mask_width, mask_height))
         FM.step(pred=pred, gt=mask)
         WFM.step(pred=pred, gt=mask)
