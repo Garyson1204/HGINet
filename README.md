@@ -26,7 +26,6 @@ python -m torch.distributed.launch --nproc_per_node=<#GPU> --master_port=<port> 
 ```
 Pretrain model weight is stored in [Google Drive](https://drive.google.com/file/d/1vdhUZ713peeo5hqXcdHPUdoMlhmDveu6/view?usp=drive_link). After downloading, please change the file path in the corresponding code.
 
-
 ## Testing & Evaluation
 
 ```shell
@@ -35,3 +34,6 @@ python eval.py
 ```
 Our well-trained model is stored in [Google Drive](https://drive.google.com/file/d/1bApr9EhHIdAzagLD_95aKBxwqv7reumX/view). After downloading, please change the file path in the corresponding code.
 
+## Acknowledgement
+
+This repository is built using the [BiFormer](https://github.com/rayleizhu/BiFormer) and [FSPNet](https://github.com/ZhouHuang23/FSPNet) repositories.
