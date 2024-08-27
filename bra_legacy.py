@@ -1,17 +1,4 @@
-"""
-Core of BiFormer, Bi-Level Routing Attention.
-
-To be refactored.
-
-author: ZHU Lei
-github: https://github.com/rayleizhu
-email: ray.leizhu@outlook.com
-
-This source code is licensed under the license found in the
-LICENSE file in the root directory of this source tree.
-"""
 from typing import Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -71,6 +58,8 @@ class TopkRouting(nn.Module):
             query, key = query.detach(), key.detach() # [B, 64, 96]
         query_hat, key_hat = self.emb(query), self.emb(key) # per-window pooling -> (n, p^2, c) 
         attn_logit = (query_hat*self.scale) @ key_hat.transpose(-2, -1) # (n, p^2, p^2)
+        
+        # DPC-KNN
         # attn_logit = attn_logit @ key_hat.norm(dim=-1).unsqueeze(2).repeat(1,1,N)
         topk_attn_logit, topk_index = torch.topk(attn_logit, k=self.topk, dim=-1) # (n, p^2, k), (n, p^2, k) Step 1
         
@@ -84,11 +73,6 @@ class TopkRouting(nn.Module):
         score = dist * density
         attn_logit = attn_logit + (score.unsqueeze(2).repeat(1,1,N).permute(0,2,1))
         topk_attn_logit_new, index_down = torch.topk(attn_logit, k=self.topk, dim=-1)
-        # dist_matrix = self.index_points(attn_logit, index_down)
-        # idx_cluster = dist_matrix.argmin(dim=1)
-        # idx_batch = torch.arange(B, device=query.device)[:, None].expand(B, self.topk)
-        # idx_tmp = torch.arange(self.topk, device=query.device)[None, :].expand(B, self.topk)
-        # idx_cluster[[idx_batch.reshape(-1), index_down.reshape(-1)]] = idx_tmp.reshape(-1)
         r_weight = self.routing_act(topk_attn_logit_new) # (n, p^2, k)
         
         
