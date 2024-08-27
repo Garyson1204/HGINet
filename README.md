@@ -1,8 +1,15 @@
-# Hierarchical Graph Interaction Transformer with Dynamic Token Clustering for Camouflaged Object Detection
+<div align="center">
 
-**Authors:** Siyuan Yao, Hao Sun, Tian-Zhu Xiang, Xiao Wang and Xiaochun Cao
+<samp>
+  <h1> Hierarchical Graph Interaction Transformer with Dynamic Token Clustering for Camouflaged Object Detection </h1>
+  <h3> Siyuan Yao, Hao Sun, Tian-Zhu Xiang, Xiao Wang and Xiaochun Cao </h3>
+</samp> 
 
-This work has been submitted to the **IEEE Transactions on Image Processing (TIP)** and is currently under review.
+This work has been submitted to the IEEE Transactions on Image Processing and is currently under review.
+
+</div> 
+
+------
 
 > The training and testing experiments are conducted using PyTorch with 4 NVIDIA GeForce RTX 3090 GPUs of 24 GB Memory.
 
