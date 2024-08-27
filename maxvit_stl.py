@@ -1,15 +1,3 @@
-"""
-MaxViT-STL (Swin-Tiny-Layout) model we used in ablation study.
-The block-grid attention is proposed in  "MaxViT: Multi-Axis Vision Transformer (ECCV 2022)"
-
-author: ZHU Lei
-github: https://github.com/rayleizhu
-email: ray.leizhu@outlook.com
-
-This source code is licensed under the license found in the
-LICENSE file in the root directory of this source tree.
-"""
-from collections import OrderedDict
 from functools import partial
 
 import torch
@@ -18,7 +6,6 @@ import torch.nn.functional as F
 from fairscale.nn.checkpoint import checkpoint_wrapper
 from timm.models import register_model
 from timm.models.layers import LayerNorm2d, to_2tuple, trunc_normal_
-# from timm.models.maxxvit import MaxxVitTransformerCfg, PartitionAttention2d
 from timm.models.maxxvit import (Attention2d, ConvMlp, DropPath, LayerScale2d,
                                  MaxxVitTransformerCfg, get_act_layer,
                                  get_norm_layer, get_rel_pos_cls,
