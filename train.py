@@ -1,16 +1,14 @@
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '4,5,6,7'
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
 import builtins
 import argparse
 import torch
 import torch.distributed as dist
 import time
-import FSPNet_model
+import HGINet
 import dataset
 import loss
-import torch.optim.lr_scheduler as lr_scheduler
 torch.cuda.empty_cache()
 
 def parse_args():
@@ -63,7 +61,7 @@ def main(args):
         builtins.print = print_pass
        
     ### model ###
-    net = FSPNet_model.Model(args.pretrain, img_size=512)
+    net = HGINet.Model(args.pretrain, img_size=512)
     net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net)
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
