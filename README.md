@@ -51,6 +51,10 @@ Our well-trained model is stored in [Google Drive](https://drive.google.com/file
 
 The prediction results of our HGINet are stored in [Google Drive](https://drive.google.com/file/d/1SZclMGfEgjm8_EYlhd6DpInJxChwURUm/view). Please check.
 
+## 📋 TODO
+- [ ] Update a new version of the well-trained model, which conforms to the current codebase.
+- [ ] Add citation from Arxiv.
+
 ## Citation
 
 To be added.
