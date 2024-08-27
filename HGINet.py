@@ -1,23 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import h5py
-import cv2
-import matplotlib.pyplot as plt
-import os
 from mmseg.utils import get_root_logger
 from timm.models.layers import LayerNorm2d
 from mmcv.runner import load_checkpoint
 import math
 from collections import OrderedDict
-from functools import partial
-from typing import Optional, Union
 import numpy as np
-from einops import rearrange
 from einops.layers.torch import Rearrange
 from fairscale.nn.checkpoint import checkpoint_wrapper
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from timm.models.vision_transformer import _cfg
+from timm.models.layers import DropPath, trunc_normal_
 
 from bra_legacy import BiLevelRoutingAttention
 
@@ -25,11 +17,11 @@ from _common import Attention, AttentionLePE, DWConv
 from Transformer import Transformer
 
 
-class Converter2(nn.Module):
+class Conv_RTFA(nn.Module):
     def __init__(self, in_chs):
-        super(Converter2, self).__init__()
+        super(Conv_RTFA, self).__init__()
         
-        self.conver1 = nn.Sequential(nn.Conv2d(in_chs[0], in_chs[0]*2, 3, padding=1, stride=2, bias=False),
+        self.conv1 = nn.Sequential(nn.Conv2d(in_chs[0], in_chs[0]*2, 3, padding=1, stride=2, bias=False),
                                  nn.BatchNorm2d(in_chs[0]*2),
                                  nn.ReLU(inplace=True),
                                  nn.Conv2d(in_chs[0]*2, in_chs[0]*4, 3, padding=1, stride=2, bias=False),
@@ -38,35 +30,35 @@ class Converter2(nn.Module):
                                  nn.Conv2d(in_chs[0]*4, 768, 1, bias=False),
                                  nn.BatchNorm2d(768),
                                  nn.ReLU(inplace=True))
-        self.conver2 = nn.Sequential(nn.Conv2d(in_chs[1], in_chs[1]*2, 3, padding=1, stride=2, bias=False),
+        self.conv2 = nn.Sequential(nn.Conv2d(in_chs[1], in_chs[1]*2, 3, padding=1, stride=2, bias=False),
                                  nn.BatchNorm2d(in_chs[1]*2),
                                  nn.ReLU(inplace=True),
                                  nn.Conv2d(in_chs[1]*2, 768, 1, bias=False),
                                  nn.BatchNorm2d(768),
                                  nn.ReLU(inplace=True))
-        self.conver3 = nn.Sequential(nn.Conv2d(in_chs[2], 768, 1, bias=False),
+        self.conv3 = nn.Sequential(nn.Conv2d(in_chs[2], 768, 1, bias=False),
                                  nn.BatchNorm2d(768),
                                  nn.ReLU(inplace=True))
     
     def forward(self, feats):
         B = feats[0].shape[0]
         new_feats = []
-        new_feat1 = self.conver1(feats[0]) # [B, 768, 32, 32]
+        new_feat1 = self.conv1(feats[0]) # [B, 768, 32, 32]
         new_feats.append(new_feat1)
-        new_feat2 = self.conver2(feats[1])
+        new_feat2 = self.conv2(feats[1])
         new_feats.append(new_feat2)
-        new_feat3 = self.conver3(feats[2])
+        new_feat3 = self.conv3(feats[2])
         new_feats.append(new_feat3)
         new_feat4 = F.interpolate(feats[3], (32,32), mode='bilinear', align_corners=True)
         new_feats.append(new_feat4)
         return new_feats
     
     
-class Converter3(nn.Module):
+class Conv_HGIT(nn.Module):
     def __init__(self, in_chs, out_chs):
-        super(Converter3, self).__init__()
+        super(Conv_HGIT, self).__init__()
         
-        self.conver1_1 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
+        self.conv1_1 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True),
                                      nn.Conv2d(in_chs, in_chs, 3, stride=2, padding=1, bias=False),
@@ -75,7 +67,7 @@ class Converter3(nn.Module):
                                      nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True))
-        self.conver1_2 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
+        self.conv1_2 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True),
                                      nn.Conv2d(in_chs, in_chs, 3, stride=2, padding=1, bias=False),
@@ -84,7 +76,7 @@ class Converter3(nn.Module):
                                      nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True))
-        self.conver3_1 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
+        self.conv3_1 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True),
                                      nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
@@ -93,7 +85,7 @@ class Converter3(nn.Module):
                                      nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True))
-        self.conver3_2 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
+        self.conv3_2 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True),
                                      nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
@@ -107,20 +99,20 @@ class Converter3(nn.Module):
 
     
     def forward(self, feats):
-        feats[0] = self.conver1_1(feats[0]) # [B, 768, 16, 16]
-        feats[1] = self.conver1_2(feats[1]) # [B, 768, 16, 16]
-        feats[4] = self.conver3_1(feats[4]) 
+        feats[0] = self.conv1_1(feats[0]) # [B, 768, 16, 16]
+        feats[1] = self.conv1_2(feats[1]) # [B, 768, 16, 16]
+        feats[4] = self.conv3_1(feats[4]) 
         feats[4] = self.up2x_3_1(feats[4])
-        feats[5] = self.conver3_2(feats[5])
+        feats[5] = self.conv3_2(feats[5])
         feats[5] = self.up2x_3_2(feats[5])
         return feats
     
     
-class Converter4(nn.Module):
+class Conv_Decoder(nn.Module):
     def __init__(self, in_chs, out_chs):
-        super(Converter4, self).__init__()
+        super(Conv_Decoder, self).__init__()
         
-        self.conver1 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
+        self.conv1 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
                                      nn.BatchNorm2d(in_chs),
                                      nn.ReLU(inplace=True),
                                      nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
@@ -132,47 +124,8 @@ class Converter4(nn.Module):
         self.up2x = UpSampling2x(in_chs, out_chs)
     
     def forward(self, feats):
-        feats = self.conver1(feats)
+        feats = self.conv1(feats)
         feats = self.up2x(feats)
-        return feats
-    
-    
-class Converter5(nn.Module):
-    def __init__(self, in_chs, out_chs):
-        super(Converter5, self).__init__()
-        
-        self.conver1 = nn.Sequential(nn.Conv2d(in_chs, in_chs, 1, bias=False),
-                                     nn.BatchNorm2d(in_chs),
-                                     nn.ReLU(inplace=True),
-                                     nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
-                                     nn.BatchNorm2d(in_chs),
-                                     nn.ReLU(inplace=True),
-                                     nn.Conv2d(in_chs, in_chs, 3, padding=1, bias=False),
-                                     nn.BatchNorm2d(in_chs),
-                                     nn.ReLU(inplace=True))
-        self.conver2 = nn.Sequential(nn.Conv2d(in_chs//2, in_chs//2, 1, bias=False),
-                                     nn.BatchNorm2d(in_chs//2),
-                                     nn.ReLU(inplace=True),
-                                     nn.Conv2d(in_chs//2, in_chs//2, 3, padding=1, bias=False),
-                                     nn.BatchNorm2d(in_chs//2),
-                                     nn.ReLU(inplace=True),
-                                     nn.Conv2d(in_chs//2, in_chs//2, 3, padding=1, bias=False),
-                                     nn.BatchNorm2d(in_chs//2),
-                                     nn.ReLU(inplace=True))
-        self.up2x_1 = UpSampling2x(in_chs, in_chs//2)
-        self.up2x_2 = UpSampling2x(in_chs//2, in_chs//4)
-        self.out = nn.Sequential(nn.Conv2d(in_chs//4, in_chs//4, 1, bias=False),
-                                 nn.BatchNorm2d(in_chs//4),
-                                 nn.ReLU(inplace=True),
-                                 nn.Conv2d(in_chs//4, 1, 1),
-                                 nn.Sigmoid())
-    
-    def forward(self, feats):
-        feats = self.conver1(feats)
-        feats = self.up2x_1(feats)
-        feats = self.conver2(feats)
-        feats = self.up2x_2(feats)
-        feats = self.out(feats)
         return feats
 
 
@@ -342,7 +295,7 @@ class Block(nn.Module):
 
 
 
-class BiFormer(nn.Module):
+class RTFA(nn.Module):
     def __init__(self, depth=[4, 4, 18, 4], in_chans=3, num_classes=2, embed_dim=[96, 192, 384, 768],
                  head_dim=32, qk_scale=None, representation_size=None,
                  drop_path_rate=0.3, drop_rate=0.,
@@ -527,9 +480,9 @@ class BasicConv2d(nn.Module):
         return self.relu(x)
 
 
-class GraphNet(nn.Module):
+class Projection(nn.Module):
     def __init__(self, node_num, dim, normalize_input=False):
-        super(GraphNet, self).__init__()
+        super(Projection, self).__init__()
         self.node_num = node_num
         self.dim = dim
         self.normalize_input = normalize_input
@@ -552,100 +505,89 @@ class GraphNet(nn.Module):
         return nodes, theta
 
 
-class CascadeGCNet(nn.Module):
+class TransformerLayer(nn.Module):
     def __init__(self, dim, loop):
-        super(CascadeGCNet, self).__init__()
+        super(TransformerLayer, self).__init__()
         self.gt1 = MultiHeadAttentionLayer(hid_dim=dim, n_heads=8, dropout=0.1)
         self.gt2 = MultiHeadAttentionLayer(hid_dim=dim, n_heads=8, dropout=0.1)
-        self.gcns = [self.gt1, self.gt2]
+        self.gts = [self.gt1, self.gt2]
         assert(loop == 1 or loop == 2 or loop == 3)
-        self.gcns = self.gcns[0:loop]
+        self.gts = self.gts[0:loop]
 
     def forward(self, x):
-        for gcn in self.gcns:
-            x = gcn(x) # b x c x k
+        for gt in self.gts:
+            x = gt(x) # b x c x k
         return x
 
 
-class MutualModule0(nn.Module):
+class GraphTransformer(nn.Module):
     def __init__(self, dim, BatchNorm=nn.BatchNorm2d, dropout=0.1):
-        super(MutualModule0, self).__init__()
-        self.gcn = CascadeGCNet(dim, loop=2)
+        super(GraphTransformer, self).__init__()
+        self.gt = TransformerLayer(dim, loop=2)
         self.conv = nn.Sequential(BasicConv2d(dim, dim, BatchNorm, kernel_size=1, padding=0))
 
     #graph0: edge, graph1/2: region, assign:edge
-    def forward(self, edge_graph, region_graph1, region_graph2, assign):
-        m = self.corr_matrix(edge_graph, region_graph1, region_graph2)
-        edge_graph = edge_graph + m
+    def forward(self, query, key, value, assign):
+        # Hierarchical Graph Interaction
+        m = self.corr_matrix(query, key, value)
+        interacted_graph = query + m
+        
+        # Transformer Learning 
+        enhanced_graph = self.gt(interacted_graph)
+        enhanced_feat = enhanced_graph.bmm(assign) # reprojection
+        enhanced_feat = self.conv(enhanced_feat.unsqueeze(3)).squeeze(3)
+        return enhanced_feat
 
-        edge_graph = self.gcn(edge_graph)
-        edge_x = edge_graph.bmm(assign) # reprojection
-        edge_x = self.conv(edge_x.unsqueeze(3)).squeeze(3)
-        return edge_x
-
-    def corr_matrix(self, edge, region1, region2):
-        assign = edge.permute(0, 2, 1).contiguous().bmm(region1)
+    def corr_matrix(self, query, key, value):
+        assign = query.permute(0, 2, 1).contiguous().bmm(key)
         assign = F.softmax(assign, dim=-1) #normalize region-node
-        m = assign.bmm(region2.permute(0, 2, 1).contiguous())
+        m = assign.bmm(value.permute(0, 2, 1).contiguous())
         m = m.permute(0, 2, 1).contiguous()
         return m
 
 
-class MutualNet(nn.Module): # dim 512 -> 768?
+class HGIT(nn.Module): 
     def __init__(self, BatchNorm=nn.BatchNorm2d, dim=768, num_clusters=1, dropout=0.1):
-        super(MutualNet, self).__init__()
+        super(HGIT, self).__init__()
 
         self.dim = dim
 
-        self.edge_proj0   = GraphNet(node_num=num_clusters, dim=self.dim, normalize_input=False)
-        self.region_proj0 = GraphNet(node_num=num_clusters, dim=self.dim, normalize_input=False)
+        self.proj_1 = Projection(node_num=num_clusters, dim=self.dim, normalize_input=False)
+        self.proj_2 = Projection(node_num=num_clusters, dim=self.dim, normalize_input=False)
 
-        self.edge_conv1 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
-                                       #BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=3, padding=1)
-        # self.edge_conv1[0].reset_params()
+        self.conv1_1 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
+        self.conv1_2 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
+
+        self.conv2_1 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
+        self.conv2_2 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
         
-        self.edge_conv2 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
-                                       #BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=3, padding=1)
-        # self.edge_conv2[0].reset_params()
-
-        self.region_conv1 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
-        # self.region_conv1[0].reset_params()
-
-        self.region_conv2 = nn.Sequential(BasicConv2d(self.dim, self.dim, BatchNorm, kernel_size=1, padding=0))
-        # self.region_conv2[0].reset_params()
+        self.conv3 = nn.Sequential(BasicConv2d(self.dim*2, self.dim, BatchNorm, kernel_size=1, padding=0))
         
-        self.region_conv3 = nn.Sequential(BasicConv2d(self.dim*2, self.dim, BatchNorm, kernel_size=1, padding=0))
+        self.gt1 = GraphTransformer(self.dim, BatchNorm, dropout) 
+        self.gt2 = GraphTransformer(self.dim, BatchNorm, dropout) 
+
+    def forward(self, feat1, feat2):
+        # project features to graphs
+        graph_2, assign_2 = self.proj_2(feat2)
+        graph_1, assign_1 = self.proj_1(feat1)
+
+        q_graph1 = self.conv1_1(graph_1.unsqueeze(3)).squeeze(3) # Q
+        k_graph1 = self.conv1_2(graph_1.unsqueeze(3)).squeeze(3) # K
+
+        # Hierarchical Graph Interaction && Transformer Learning and Reprojection
+        q_graph2 = self.conv2_1(graph_2.unsqueeze(3)).squeeze(3) # Q
+        k_graph2 = self.conv2_2(graph_2.unsqueeze(3)).squeeze(3) # K
         
-        self.r2e = MutualModule0(self.dim, BatchNorm, dropout) 
-        self.r2e_1 = MutualModule0(self.dim, BatchNorm, dropout) 
-        # self.e2r = MutualModule1(self.dim, BatchNorm, dropout)
+        mutual_V = torch.cat((graph_2, graph_1), dim=1)
+        mutual_V_new = self.conv3(mutual_V.unsqueeze(3)).squeeze(3) # V
 
-    def forward(self, edge_x, region_x):
-        # project region/edge fature to graph
-        region_graph, region_assign = self.region_proj0(region_x)
-        edge_graph, edge_assign = self.edge_proj0(edge_x)
-
-        edge_graph1 = self.edge_conv1(edge_graph.unsqueeze(3)).squeeze(3) # Q
-        edge_graph2 = self.edge_conv2(edge_graph.unsqueeze(3)).squeeze(3) # K
-
-        # Region-edge mutual learning
-        region_graph1 = self.region_conv1(region_graph.unsqueeze(3)).squeeze(3) # Q
-        region_graph2 = self.region_conv2(region_graph.unsqueeze(3)).squeeze(3) # K
+        enhanced_feat1 = self.gt1(q_graph1, k_graph2, mutual_V_new, assign_1)
+        feat1 = feat1 + enhanced_feat1.view(feat1.size()).contiguous()
         
-        mutual_V = torch.cat((region_graph, edge_graph), dim=1)
-        mutual_V_new = self.region_conv3(mutual_V.unsqueeze(3)).squeeze(3) # V
+        enhanced_feat2 = self.gt2(q_graph2, k_graph1, mutual_V_new, assign_2)
+        feat2 = feat2 + enhanced_feat2.view(feat2.size()).contiguous()
 
-        # CGI
-        n_edge_x = self.r2e(edge_graph1, region_graph2, mutual_V_new, edge_assign)
-        edge_x = edge_x + n_edge_x.view(edge_x.size()).contiguous()
-        
-        n_region_x = self.r2e_1(region_graph1, edge_graph2, mutual_V_new, region_assign)
-        region_x = region_x + n_region_x.view(region_x.size()).contiguous()
-
-        # edge-region mutual learning
-        # region_x, edge, region = self.e2r(region_x, region_graph, region_assign, edge_x)
-
-        return edge_x, region_x
+        return feat1, feat2
 
 
 class MultiHeadAttentionLayer(nn.Module):
@@ -674,11 +616,11 @@ class MultiHeadAttentionLayer(nn.Module):
         self.a4 = nn.ReLU(inplace=True)
         self.scale = torch.sqrt(torch.FloatTensor([self.head_dim]))
     
-    def get_lap_vec(self, edge_graph):
-        device = edge_graph.device
-        batch = edge_graph.shape[0]
-        edge_graph_t = edge_graph.permute(0, 2, 1).contiguous() # transpose
-        dense_adj = torch.matmul(edge_graph_t, edge_graph)
+    def get_lap_vec(self, graph):
+        device = graph.device
+        batch = graph.shape[0]
+        graph_t = graph.permute(0, 2, 1).contiguous() # transpose
+        dense_adj = torch.matmul(graph_t, graph)
         dense_adj = self.a4(dense_adj)
         in_degree = dense_adj.sum(dim=1).view(batch, -1)
         dense_adj = dense_adj.detach().cpu().float().numpy()
@@ -702,10 +644,10 @@ class MultiHeadAttentionLayer(nn.Module):
                 filename = "laplacian_{}.txt".format(i)
                 np.savetxt(filename, L[i])
 
-        # for eigval, take abs because numpy sometimes computes the first eigenvalue approaching 0 from the negative
-        eigvec = torch.from_numpy(EigVec).float().to(device)  # [N, N (channels)]
-        eigval = torch.from_numpy(np.sort(np.abs(np.real(EigVal)))).float().to(device)  # [N (channels),]
-        return eigvec, eigval  # [N, N (channels)]  [N (channels),]
+        
+        eigvec = torch.from_numpy(EigVec).float().to(device) 
+        eigval = torch.from_numpy(np.sort(np.abs(np.real(EigVal)))).float().to(device) 
+        return eigvec, eigval 
         
     
     def forward(self, qkv):
@@ -753,9 +695,9 @@ class MultiHeadAttentionLayer(nn.Module):
         return x
 
 
-class CRM(nn.Module):
+class CAFF(nn.Module):
     def __init__(self, inc, outc, hw, embed_dim, num_patches, depth=4):
-        super(CRM, self).__init__()
+        super(CAFF, self).__init__()
         self.conv_p1 = nn.Conv2d(inc, outc, kernel_size=3, padding=1, bias=True)
         self.conv_p2 = nn.Conv2d(inc, outc, kernel_size=3, padding=1, bias=True)
         self.conv_glb = nn.Conv2d(outc, inc, kernel_size=3, padding=1, bias=True)
@@ -802,10 +744,10 @@ class CRM(nn.Module):
         return p2
     
 
-class AFF(nn.Module):
+class Fusion(nn.Module):
 
     def __init__(self, channels=64, r=4):
-        super(AFF, self).__init__()
+        super(Fusion, self).__init__()
         inter_channels = int(channels // r)
 
         self.local_att = nn.Sequential(
@@ -877,7 +819,7 @@ class MS_CAM(nn.Module):
 class Model(nn.Module):
     def __init__(self, ckpt, img_size=512):  # change img size to 512
         super(Model, self).__init__()
-        self.encoder = BiFormer() # BiFormer
+        self.encoder = RTFA() # RTFA encoder
         if ckpt is not None:
             ckpt = torch.load(ckpt, map_location='cpu') # pretrain pth path
             msg = self.encoder.load_state_dict({k.replace('backbone.',''):v for k,v in ckpt['model'].items()}, strict=False)
@@ -886,61 +828,67 @@ class Model(nn.Module):
         self.img_size = img_size
         self.vit_chs = 768
 
-        self.converter2 = Converter2(in_chs=[96,192,384])
-        self.converter3 = Converter3(in_chs=768, out_chs=384)
-        self.converter4 = Converter4(in_chs=384, out_chs=384)
-        self.converter5 = Converter4(in_chs=384, out_chs=384)
-        self.converter6_1 = Converter4(in_chs=384, out_chs=192)
-        self.converter6_2 = Converter4(in_chs=384, out_chs=192)
-        self.mutualnet0 = MutualNet(nn.BatchNorm2d, dim=self.vit_chs, num_clusters=8, dropout=0.1)
-        self.mutualnet1 = MutualNet(nn.BatchNorm2d, dim=self.vit_chs, num_clusters=8, dropout=0.1)
-        self.mutualnet2 = MutualNet(nn.BatchNorm2d, dim=self.vit_chs, num_clusters=8, dropout=0.1)
+        self.conv_rtfa = Conv_RTFA(in_chs=[96,192,384])
+        self.conv_hgit = Conv_HGIT(in_chs=768, out_chs=384)
+        self.conv_caff_fusion = Conv_Decoder(in_chs=384, out_chs=384)
+        self.conv_fusion_1 = Conv_Decoder(in_chs=384, out_chs=384)
+        self.conv_fusion_2_1 = Conv_Decoder(in_chs=384, out_chs=192)
+        self.conv_fusion_2_2 = Conv_Decoder(in_chs=384, out_chs=192)
+        self.hgit_0 = HGIT(nn.BatchNorm2d, dim=self.vit_chs, num_clusters=8, dropout=0.1)
+        self.hgit_1 = HGIT(nn.BatchNorm2d, dim=self.vit_chs, num_clusters=8, dropout=0.1)
+        self.hgit_2 = HGIT(nn.BatchNorm2d, dim=self.vit_chs, num_clusters=8, dropout=0.1)
 
         
-        self.CRM_C = CRM(inc=768, outc=384, hw=16, embed_dim=768, num_patches=256)
-        self.CRM_M = CRM(inc=768, outc=384, hw=32, embed_dim=768, num_patches=1024)
-        self.CRM_F = CRM(inc=768, outc=384, hw=64, embed_dim=768, num_patches=4096)
-        self.aff_1_1 = AFF(channels=384)
-        self.aff_1_2 = AFF(channels=384)
-        self.aff_2 = AFF(channels=192)
+        self.caff_coarse = CAFF(inc=768, outc=384, hw=16, embed_dim=768, num_patches=256)
+        self.caff_mid = CAFF(inc=768, outc=384, hw=32, embed_dim=768, num_patches=1024)
+        self.caff_grained = CAFF(inc=768, outc=384, hw=64, embed_dim=768, num_patches=4096)
+        self.fusion_1_1 = Fusion(channels=384)
+        self.fusion_1_2 = Fusion(channels=384)
+        self.fusion_2 = Fusion(channels=192)
         
         self.out1 = OutPut(in_chs=384, scale=16)
         self.out2 = OutPut(in_chs=384, scale=8)
-        self.out4 = OutPut(in_chs=192, scale=4)
+        self.out3 = OutPut(in_chs=192, scale=4)
 
     def pred_out(self, gpd_outs):
-        return self.out1(gpd_outs[0]), self.out2(gpd_outs[1]), self.out4(gpd_outs[2]) #  self.out2(gpd_outs[1]), self.out3(gpd_outs[2]),
+        return self.out1(gpd_outs[0]), self.out2(gpd_outs[1]), self.out3(gpd_outs[2])
 
     
     def forward(self, img):
         # B Seq
         B, C, H, W = img.size()
-        
+        # RTFA
         x = self.encoder(img) 
-        x = self.converter2(x)
+        # unify the feature size
+        x = self.conv_rtfa(x)
+        
+        # HGIT
         feature = []
-        out1, out2 = self.mutualnet0(x[3], x[2])
+        out1, out2 = self.hgit_0(x[3], x[2])
         feature.append(out1)
         feature.append(out2)
-        out1, out2 = self.mutualnet2(x[2], x[1])
+        out1, out2 = self.hgit_1(x[2], x[1])
         feature.append(out1)
         feature.append(out2)
-        out1, out2 = self.mutualnet1(x[1], x[0])
+        out1, out2 = self.hgit_2(x[1], x[0])
         feature.append(out1)
         feature.append(out2) # [5,4,3,2,1,0]
-        feature_new = self.converter3(feature) # [B, 768, 16, 16] & [B, 768, 32, 32] & [B, 768, 64, 64]
-        feat1 = self.CRM_C(feature_new[0], feature_new[1]) # [384,32]
-        feat2 = self.CRM_M(feature_new[2], feature_new[3]) # [384,64]
-        feat3 = self.CRM_F(feature_new[4], feature_new[5]) # [384,128]
+        
+        feature_new = self.conv_hgit(feature) # [B, 768, 16, 16] & [B, 768, 32, 32] & [B, 768, 64, 64]
+        
+        # decoder network with CAFF modules
+        feat1 = self.caff_coarse(feature_new[0], feature_new[1]) # [384,32]
+        feat2 = self.caff_mid(feature_new[2], feature_new[3]) # [384,64]
+        feat3 = self.caff_grained(feature_new[4], feature_new[5]) # [384,128]
         gpd_outs = []
-        feat1 = self.converter4(feat1) # [32->64]
-        feat1_1 = self.aff_1_1(feat1, feat2) # [384,32] 
+        feat1 = self.conv_caff_fusion(feat1) # [32->64]
+        feat1_1 = self.fusion_1_1(feat1, feat2) # [384,32] 
         gpd_outs.append(feat1_1)
-        feat1_1 = self.converter5(feat1_1) # [384,32 -> 384,64]
-        feat1_2 = self.aff_1_2(feat1_1, feat3) # [384,64]
+        feat1_1 = self.conv_fusion_1(feat1_1) # [384,32 -> 384,64]
+        feat1_2 = self.fusion_1_2(feat1_1, feat3) # [384,64]
         gpd_outs.append(feat1_2)
-        feat1_1 = self.converter6_1(feat1_1) # [384,64 -> 192,128]
-        feat1_2 = self.converter6_2(feat1_2) # [384,64 -> 192,128]
-        feat2_1 = self.aff_2(feat1_1, feat1_2) # [192,128]
+        feat1_1 = self.conv_fusion_2_1(feat1_1) # [384,64 -> 192,128]
+        feat1_2 = self.conv_fusion_2_2(feat1_2) # [384,64 -> 192,128]
+        feat2_1 = self.fusion_2(feat1_1, feat1_2) # [192,128]
         gpd_outs.append(feat2_1)
         return self.pred_out(gpd_outs)
