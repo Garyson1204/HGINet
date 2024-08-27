@@ -1,23 +1,18 @@
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 import torch
-import FSPNet_model
+import HGINet
 import dataset
 
 from torch.utils.data import DataLoader
 import numpy as np
 import torch.nn.functional as F
 from imageio import imwrite
-import cv2
-import matplotlib.pyplot as plt
-from torchvision.utils import save_image
-from einops import rearrange
-from fvcore.nn import FlopCountAnalysis, parameter_count_table
 
 
 if __name__ =='__main__':
     batch_size = 1
-    net = FSPNet_model.Model(None, img_size=512).cuda()
+    net = HGINet.Model(None, img_size=512).cuda()
 
     ckpt=['model_152_loss_0.50682.pth']
 
