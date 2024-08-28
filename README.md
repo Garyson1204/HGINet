@@ -57,11 +57,17 @@ The prediction results of our HGINet are stored in [Google Drive](https://drive.
 
 ## 📋 TODO
 - [ ] Update a new version of the well-trained model, which conforms to the current codebase.
-- [ ] Add citation from Arxiv.
+- [x] Add citation from Arxiv.
 
 ## Citation
 
-To be added.
+    @article{yao2024hierarchical,
+             title={Hierarchical Graph Interaction Transformer with Dynamic Token Clustering for Camouflaged Object Detection}, 
+             author={Yao, Siyuan and Sun, Hao and Xiang, Tian-Zhu and Wang, Xiao and Cao, Xiaochun},
+             journal={arXiv preprint arXiv:2408.15020},
+             year={2024}
+    }
+
 
 ## Acknowledgement
 
