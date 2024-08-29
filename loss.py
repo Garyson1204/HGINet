@@ -37,5 +37,5 @@ def multi_structure_loss(preds, gt):
     m_loss = structure_loss(preds[2], gt)
     loss = 0.
     for i in range(0, len(preds) - 1):
-        loss += (structure_loss(preds[i], gt)) * ((1+i) / 8)
+        loss += (structure_loss(preds[i], gt)) * ((2 ** i) / 8)
     return loss + m_loss, m_loss
