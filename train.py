@@ -116,7 +116,7 @@ def main(args):
     ### main loop ###
     star_time=time.time()
     for curr_epoch in range(0, 201):
-        if curr_epoch==50 or curr_epoch==100 or curr_epoch==150:
+        if curr_epoch==100 or curr_epoch==150:
             for param_group in optimizer.param_groups:
                 param_group['lr']= param_group['lr']*0.1
                 print("Learning rate:", param_group['lr'])
