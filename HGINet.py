@@ -144,42 +144,6 @@ class UpSampling2x(nn.Module):
         return self.up_module(features)
 
 
-class GroupFusion(nn.Module):
-    def __init__(self, in_chs, out_chs, start=False):  # 768, 384
-        super(GroupFusion, self).__init__()
-        temp_chs = in_chs
-        if start:
-            in_chs = in_chs
-        else:
-            in_chs *= 2
-
-        self.gf1 = nn.Sequential(nn.Conv2d(in_chs, temp_chs, 1, bias=False),
-                                 nn.BatchNorm2d(temp_chs),
-                                 nn.ReLU(inplace=True),
-                                 nn.Conv2d(temp_chs, temp_chs, 3, padding=1, bias=False),
-                                 nn.BatchNorm2d(temp_chs),
-                                 nn.ReLU(inplace=True),
-                                 nn.Conv2d(temp_chs, temp_chs, 3, padding=1, bias=False),
-                                 nn.BatchNorm2d(temp_chs),
-                                 nn.ReLU(inplace=True))
-
-        self.gf2 = nn.Sequential(nn.Conv2d((temp_chs + temp_chs), temp_chs, 1, bias=False),
-                                 nn.BatchNorm2d(temp_chs),
-                                 nn.ReLU(inplace=True),
-                                 nn.Conv2d(temp_chs, temp_chs, 3, padding=1, bias=False),
-                                 nn.BatchNorm2d(temp_chs),
-                                 nn.ReLU(inplace=True),
-                                 nn.Conv2d(temp_chs, temp_chs, 3, padding=1, bias=False),
-                                 nn.BatchNorm2d(temp_chs),
-                                 nn.ReLU(inplace=True))
-        self.up2x = UpSampling2x(temp_chs, out_chs)
-
-    def forward(self, f_r, f_l):
-        f_r = self.gf1(f_r)  # chs 768
-        f12 = self.gf2(torch.cat((f_r, f_l), dim=1))  # chs 768
-        return f12, self.up2x(f12)
-
-
 class OutPut(nn.Module):
     def __init__(self, in_chs, scale=1):
         super(OutPut, self).__init__()
@@ -547,7 +511,7 @@ class GraphTransformer(nn.Module):
 
 
 class HGIT(nn.Module): 
-    def __init__(self, BatchNorm=nn.BatchNorm2d, dim=768, num_clusters=1, dropout=0.1):
+    def __init__(self, BatchNorm=nn.BatchNorm2d, dim=768, num_clusters=8, dropout=0.1):
         super(HGIT, self).__init__()
 
         self.dim = dim
