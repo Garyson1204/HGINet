@@ -42,7 +42,7 @@ python -m torch.distributed.launch --nproc_per_node=<#GPU> --master_port=<port> 
 ```
 Pretrain model weight is stored in [Google Drive](https://drive.google.com/file/d/1vdhUZ713peeo5hqXcdHPUdoMlhmDveu6/view). After downloading, please change the file path in the corresponding code or the training command.
 > [!note]
-> It is better to train with an overall batch size larger than 16 due to the 'BatchNorm2D'.
+> It is better to train with an overall batch size at least 16 due to the 'BatchNorm2D'.
 
 ## Testing & Evaluation
 
