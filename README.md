@@ -52,7 +52,7 @@ python eval.py
 ```
 Our well-trained model is stored in [Google Drive](https://drive.google.com/file/d/1t3XE518ijY8NiJkyaQKLtr5zPCUdaskb/view). After downloading, please change the file path in the corresponding code.
 > [!note]
-> If you want to debug with the same model parameters used for testing “Prediction results, use the [previous codebase](https://drive.google.com/file/d/16aJWqObAjT7YuYrH3k8ldarquPLy3Y53/view) and this [well-trained model](https://drive.google.com/file/d/1bApr9EhHIdAzagLD_95aKBxwqv7reumX/view). 
+> If you want to debug with the same model parameters used for testing “Prediction results", use the [previous codebase](https://drive.google.com/file/d/16aJWqObAjT7YuYrH3k8ldarquPLy3Y53/view) and this [well-trained model](https://drive.google.com/file/d/1bApr9EhHIdAzagLD_95aKBxwqv7reumX/view). 
 
 ## Results
 
