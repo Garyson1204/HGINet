@@ -8,7 +8,7 @@
 
 ------
 
-> This work has been accepted by the IEEE Transactions on Image Processing (TIP).
+> This work has been accepted by IEEE Transactions on Image Processing (TIP).
 
 > The training and testing experiments are conducted using PyTorch with 4 NVIDIA GeForce RTX 3090 GPUs of 24 GB Memory.
 
